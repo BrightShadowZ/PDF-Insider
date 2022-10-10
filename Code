@@ -1,0 +1,84 @@
+import shutil
+import PyPDF2
+import os
+import glob
+import PySimpleGUI as sg
+
+sg.theme('DarkTeal9')
+
+layout = [
+    [sg.Text('Search Folder:', size=(10, 1)), sg.InputText(key='file_path'), sg.FolderBrowse()],
+    [sg.Text('Copy to:', size=(10, 1)), sg.InputText(key='save_location'), sg.FolderBrowse()],
+    [sg.Text('Key Word:', size=(10, 1)), sg.InputText(key='word_key', size=15),
+     sg.Text('Key Word2:', size=(10, 1)), sg.InputText(key='word_key2', size=15)],
+
+    [sg.Submit(), sg.Exit()]
+
+]
+
+window = sg.Window('PDF Finder', layout)
+
+while True:
+    event, values = window.read()
+
+    pdf_file1 = str(values['file_path'])
+    pdf_file = glob.glob(os.path.join(pdf_file1.replace('/', '\\') + '/*.pdf'))
+    movePDF1 = str(values['save_location'])
+    movePDF = movePDF1.replace('/', '\\')
+    movePDF_file1 = str((movePDF + '/*.pdf'))
+    movePDF_file = movePDF1.replace('/', '\\')
+    key_word = str(values['word_key'])
+    key_word2 = str(values['word_key2'])
+    files = ''
+    files_searched = 0
+    files_found = 0
+
+    if event == sg.WIN_CLOSED or event == 'Exit':
+        break
+
+    if event == 'Submit':
+        searching = [
+            [sg.Text('Searching...'), sg.InputText(default_text='', key='search')]
+        ]
+        searching = sg.Window('Searching...', searching)
+
+        try:
+            event, values = searching.read()
+            for doc in pdf_file:
+
+                pdfFileObj = open(doc, 'rb')
+                pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+                ph = pdfReader.getPage(0)
+                opdf = ph.extractText()
+                files_searched += 1
+
+                if key_word in opdf and key_word2 in opdf:
+                    shutil.copy(doc, movePDF)
+                    files_found += 1
+                    files += doc + '\n'
+                    window['file_path'].update(doc)
+
+                else:
+
+                    continue
+            searching.close()
+        except PermissionError:
+            sg.popup('Ops')
+        file = 'Searched: ' + str(files_searched), 'Found: ' + str(files_found)
+        complete = [
+            [sg.Multiline(files, size=(65, 5))],
+
+            [sg.Exit(), sg.Text(file)]
+        ]
+        complete = sg.Window('Files Found:', complete)
+
+        event, values = complete.read()
+        if event == sg.WIN_CLOSED or event == 'Exit':
+            complete.close()
+
+        window['file_path'].update(value='')
+        window['save_location'].update(value='')
+        window['word_key'].update(value='')
+        window['word_key2'].update(value='')
+
+window.close()
